@@ -1,0 +1,35 @@
+# Deny direct web access to sensitive directories
+<IfModule mod_authz_core.c>
+    <DirectoryMatch "^.*(data|API|logs)$">
+        Require all denied
+    </DirectoryMatch>
+</IfModule>
+# Apache 2.2 fallback
+<IfModule !mod_authz_core.c>
+    <DirectoryMatch "^.*(data|API|logs)$">
+        Order deny,allow
+        Deny from all
+    </DirectoryMatch>
+</IfModule>
+
+# Deny access to config files
+<FilesMatch "^(config|db)\.php$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order deny,allow
+        Deny from all
+    </IfModule>
+</FilesMatch>
+
+# Security headers
+<IfModule mod_headers.c>
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-Frame-Options "SAMEORIGIN"
+    Header always set X-XSS-Protection "1; mode=block"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+</IfModule>
+
+# Prevent directory listing
+Options -Indexes

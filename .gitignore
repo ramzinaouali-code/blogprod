@@ -1,0 +1,10 @@
+# Sensitive secrets — never commit these
+API/api.txt
+.env
+
+# SQLite database and logs — stored on Railway volume, not in repo
+data/
+logs/
+
+# Local dev artifacts
+.claude/settings.local.json
