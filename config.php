@@ -4,7 +4,7 @@ define('BASE_DIR',     __DIR__);
 define('API_KEY_FILE', BASE_DIR . '/API/api.txt');
 
 // ─── SQLite path — use env var on Railway, local default otherwise ────────────
-// On Railway: set DB_PATH=/data/blog.db (persistent volume mounted at /data)
+// On Railway: mount persistent volume to /app/data, set DB_PATH=/app/data/blog.db
 // Locally: defaults to data/blog.db inside project
 define('DB_PATH',  getenv('DB_PATH')  ?: BASE_DIR . '/data/blog.db');
 define('LOG_PATH', getenv('LOG_PATH') ?: BASE_DIR . '/logs/generate.log');
