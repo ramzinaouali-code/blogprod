@@ -1,6 +1,6 @@
 <?php
 /**
- * One-time script to backfill photo_url for existing posts that have none.
+ * Backfill photo_url for existing posts using Pexels API.
  * HTTP: https://yourdomain.com/backfill_photos.php?token=CRON_TOKEN
  * CLI:  php backfill_photos.php --local
  */
@@ -9,7 +9,6 @@ require_once __DIR__ . '/db.php';
 
 $is_cli = php_sapi_name() === 'cli';
 
-// Auth
 if (!$is_cli) {
     if (!hash_equals(CRON_TOKEN, $_GET['token'] ?? '')) {
         http_response_code(403); die('Forbidden');
@@ -17,9 +16,9 @@ if (!$is_cli) {
     header('Content-Type: text/plain');
 }
 
-$db   = get_db();
+$db    = get_db();
 $posts = $db->query(
-    "SELECT id, slug, tags FROM posts WHERE photo_url = '' OR photo_url IS NULL"
+    "SELECT id, slug, title, tags FROM posts WHERE photo_url = '' OR photo_url IS NULL"
 )->fetchAll();
 
 if (empty($posts)) {
@@ -28,26 +27,55 @@ if (empty($posts)) {
 }
 
 echo "Backfilling photos for " . count($posts) . " posts...\n";
+echo "Using: " . (PEXELS_API_KEY ? "Pexels API" : "Picsum fallback") . "\n\n";
 
 foreach ($posts as $post) {
-    $keywords = $post['tags'] ?: $post['slug'];
-    $photo_url = fetch_unsplash_photo($keywords);
+    // Use title + tags for the most relevant Pexels search
+    $search    = $post['title'] . ' ' . $post['tags'];
+    $photo_url = fetch_photo($search);
 
-    if ($photo_url) {
-        $db->prepare("UPDATE posts SET photo_url = ? WHERE id = ?")
-           ->execute([$photo_url, $post['id']]);
-        echo "✓ Post #{$post['id']} ({$post['slug']}): {$photo_url}\n";
-    } else {
-        echo "✗ Post #{$post['id']} ({$post['slug']}): Unsplash fetch failed, skipping.\n";
-    }
+    $db->prepare("UPDATE posts SET photo_url = ? WHERE id = ?")
+       ->execute([$photo_url, $post['id']]);
 
-    sleep(1); // Be polite to Unsplash
+    echo "✓ Post #{$post['id']}: {$post['title']}\n  → {$photo_url}\n\n";
+
+    sleep(1); // Respect Pexels rate limits
 }
 
-echo "\nDone.\n";
+echo "Done.\n";
 
-// ─── Photo URL Builder (Picsum — seed = slug, deterministic per post) ────────
-function fetch_unsplash_photo(string $keywords): string {
+// ─── Pexels + Picsum fetcher ──────────────────────────────────────────────────
+function fetch_photo(string $keywords): string {
+    if (PEXELS_API_KEY) {
+        $photo = fetch_pexels_photo($keywords);
+        if ($photo) return $photo;
+    }
     $seed = substr(preg_replace('/[^a-z0-9]/', '', strtolower($keywords)), 0, 40);
     return "https://picsum.photos/seed/{$seed}/1200/630";
+}
+
+function fetch_pexels_photo(string $keywords): string {
+    $clean = trim(preg_replace('/[^a-z0-9,\- ]/i', ' ', $keywords));
+    $query = urlencode(preg_replace('/\s+/', ' ', str_replace(',', ' ', $clean)));
+
+    $ch = curl_init("https://api.pexels.com/v1/search?query={$query}&per_page=1&orientation=landscape");
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_HTTPHEADER     => ['Authorization: ' . PEXELS_API_KEY],
+        CURLOPT_TIMEOUT        => 10,
+        CURLOPT_USERAGENT      => 'HealthCyberInsights/1.0',
+    ]);
+    $body = curl_exec($ch);
+    $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    if ($code !== 200) return '';
+    $data = json_decode($body, true);
+    $url  = $data['photos'][0]['src']['large2x'] ?? '';
+
+    if (!$url) {
+        // Retry with broader terms
+        return fetch_pexels_photo('healthcare technology security');
+    }
+    return $url;
 }

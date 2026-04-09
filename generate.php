@@ -406,35 +406,54 @@ function post_thumbnail_css(string $slug, string $color = '#1a73e8'): string {
     return "linear-gradient(135deg, {$color}, hsl({$hue2},55%,28%))";
 }
 
-// ─── Photo URL Builder (Picsum — reliable, no API key, unique per post) ──────
+// ─── Pexels Photo Fetcher — content-relevant, searches by post keywords ───────
 function fetch_unsplash_photo(string $keywords): string {
-    // Use slug-based seed so each post always gets the same unique photo.
-    // Picsum serves beautiful 1200x630 photos — deterministic per seed.
-    $seed = substr(preg_replace('/[^a-z0-9]/', '', strtolower($keywords)), 0, 40);
-    $url  = "https://picsum.photos/seed/{$seed}/1200/630";
-
-    // Verify the URL resolves (quick HEAD check)
-    $ch = curl_init($url);
-    curl_setopt_array($ch, [
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_FOLLOWLOCATION => true,
-        CURLOPT_NOBODY         => true,
-        CURLOPT_TIMEOUT        => 8,
-        CURLOPT_USERAGENT      => 'HealthCyberInsights/1.0',
-    ]);
-    curl_exec($ch);
-    $final_url = curl_getinfo($ch, CURLINFO_EFFECTIVE_URL);
-    $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
-
-    if ($http_code === 200 && $final_url) {
-        log_msg("Photo URL: {$final_url}");
-        return $final_url;
+    // Try Pexels API first (content-relevant photos)
+    if (PEXELS_API_KEY) {
+        $photo = fetch_pexels_photo($keywords);
+        if ($photo) return $photo;
     }
 
-    // Absolute fallback: return the picsum URL anyway (browser will load it directly)
-    log_msg("Picsum HEAD check failed — using URL directly: {$url}");
-    return $url;
+    // Fallback: Picsum (deterministic per slug, always works, no API key)
+    $seed = substr(preg_replace('/[^a-z0-9]/', '', strtolower($keywords)), 0, 40);
+    log_msg("Pexels unavailable — using Picsum fallback for seed: {$seed}");
+    return "https://picsum.photos/seed/{$seed}/1200/630";
+}
+
+function fetch_pexels_photo(string $keywords): string {
+    // Build a clean search query — Pexels works best with 2-4 concise terms
+    $clean = trim(preg_replace('/[^a-z0-9,\- ]/i', ' ', $keywords));
+    // Replace commas with spaces, collapse whitespace
+    $query = preg_replace('/\s+/', ' ', str_replace(',', ' ', $clean));
+    $query = urlencode(trim($query));
+
+    $ch = curl_init("https://api.pexels.com/v1/search?query={$query}&per_page=1&orientation=landscape");
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_HTTPHEADER     => ['Authorization: ' . PEXELS_API_KEY],
+        CURLOPT_TIMEOUT        => 10,
+        CURLOPT_USERAGENT      => 'HealthCyberInsights/1.0',
+    ]);
+    $body = curl_exec($ch);
+    $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    if ($code !== 200 || !$body) {
+        log_msg("Pexels API returned HTTP {$code}");
+        return '';
+    }
+
+    $data = json_decode($body, true);
+    $url  = $data['photos'][0]['src']['large2x'] ?? '';
+
+    if ($url) {
+        log_msg("Pexels photo found: {$url}");
+        return $url;
+    }
+
+    // If no results for specific keywords, retry with broader healthcare+tech terms
+    log_msg("No Pexels results for '{$query}', retrying with broader terms");
+    return fetch_pexels_photo('healthcare technology security');
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────

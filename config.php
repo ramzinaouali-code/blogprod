@@ -62,6 +62,10 @@ define('POSTS_PER_PAGE', 9);
     define('BLOG_URL', $scheme . '://' . $host . $sub);
 })();
 
+// ─── Pexels API (for content-relevant post photos) ───────────────────────────
+// On Railway: set PEXELS_API_KEY environment variable in the dashboard
+define('PEXELS_API_KEY', getenv('PEXELS_API_KEY') ?: '');
+
 // ─── Amazon Affiliate ─────────────────────────────────────────────────────────
 define('AMAZON_TAG', 'rncyberhealth-20');
 
