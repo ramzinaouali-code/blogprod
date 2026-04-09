@@ -98,7 +98,24 @@ $topics = [
     'Medication Safety and AI: Preventing Algorithmic Errors in Prescribing',
 ];
 
-// ─── Main ─────────────────────────────────────────────────────────────────────
+// ─── Respond immediately to cron-job.org, then generate in background ────────
+if (!$is_cli) {
+    $ack = "202 Accepted — generating post in background.\n";
+    http_response_code(202);
+    header('Content-Type: text/plain');
+    header('Connection: close');
+    header('Content-Length: ' . strlen($ack));
+    echo $ack;
+
+    // Flush all output buffers so the response reaches the client now
+    while (ob_get_level()) ob_end_flush();
+    flush();
+
+    // PHP continues executing below after the HTTP connection is closed
+    set_time_limit(300); // Allow up to 5 min for Claude API + photo fetch
+}
+
+// ─── Main (runs in background for HTTP, inline for CLI) ───────────────────────
 try {
     $db          = get_db();
     $topic_index = (int)get_setting('last_topic_index', '0');
@@ -115,29 +132,19 @@ try {
 
     log_msg("Generating post for topic: {$topic}");
 
-    $response = call_claude($topic);
+    $response  = call_claude($topic);
     $post_data = parse_post_response($response);
 
     insert_post($db, $post_data, $topic);
     set_setting('last_topic_index', (string)(($topic_index + 1) % count($topics)));
     log_generation('success', $topic, 'Post created: ' . $post_data['slug']);
-
-    $out = "SUCCESS: Post '{$post_data['title']}' created (slug: {$post_data['slug']})" . PHP_EOL;
-    if (!$is_cli) {
-        header('Content-Type: text/plain');
-        http_response_code(200);
-    }
-    echo $out;
+    log_msg("SUCCESS: Post '{$post_data['title']}' created (slug: {$post_data['slug']})");
 
 } catch (Throwable $e) {
     $msg = 'ERROR: ' . $e->getMessage();
     log_generation('error', $topic ?? null, $msg);
     log_msg($msg);
-    if (!$is_cli) {
-        http_response_code(500);
-        header('Content-Type: text/plain');
-    }
-    echo $msg . PHP_EOL;
+    if ($is_cli) echo $msg . PHP_EOL;
 }
 
 // ─── Schedule Guard ───────────────────────────────────────────────────────────
