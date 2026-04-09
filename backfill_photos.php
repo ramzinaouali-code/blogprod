@@ -17,9 +17,12 @@ if (!$is_cli) {
 }
 
 $db    = get_db();
-$posts = $db->query(
-    "SELECT id, slug, title, tags FROM posts WHERE photo_url = '' OR photo_url IS NULL"
-)->fetchAll();
+// ?force=1 replaces ALL photos (including existing Picsum ones)
+$force = isset($_GET['force']) || in_array('--force', $argv ?? []);
+$sql   = $force
+    ? "SELECT id, slug, title, tags FROM posts"
+    : "SELECT id, slug, title, tags FROM posts WHERE photo_url = '' OR photo_url IS NULL";
+$posts = $db->query($sql)->fetchAll();
 
 if (empty($posts)) {
     echo "All posts already have photos.\n";
