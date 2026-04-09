@@ -46,28 +46,8 @@ foreach ($posts as $post) {
 
 echo "\nDone.\n";
 
-// ─── Unsplash fetcher (same logic as generate.php) ────────────────────────────
+// ─── Photo URL Builder (Picsum — seed = slug, deterministic per post) ────────
 function fetch_unsplash_photo(string $keywords): string {
-    $base   = 'healthcare,technology,cybersecurity';
-    $clean  = preg_replace('/[^a-z0-9,\- ]/i', '', $keywords);
-    $query  = urlencode($base . ',' . $clean);
-    $source = "https://source.unsplash.com/1200x630/?{$query}";
-
-    $ch = curl_init($source);
-    curl_setopt_array($ch, [
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_FOLLOWLOCATION => true,
-        CURLOPT_NOBODY         => true,
-        CURLOPT_TIMEOUT        => 10,
-        CURLOPT_USERAGENT      => 'HealthCyberInsights/1.0',
-    ]);
-    curl_exec($ch);
-    $final_url = curl_getinfo($ch, CURLINFO_EFFECTIVE_URL);
-    $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
-
-    if ($http_code === 200 && str_contains($final_url, 'images.unsplash.com')) {
-        return $final_url;
-    }
-    return '';
+    $seed = substr(preg_replace('/[^a-z0-9]/', '', strtolower($keywords)), 0, 40);
+    return "https://picsum.photos/seed/{$seed}/1200/630";
 }

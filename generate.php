@@ -406,21 +406,20 @@ function post_thumbnail_css(string $slug, string $color = '#1a73e8'): string {
     return "linear-gradient(135deg, {$color}, hsl({$hue2},55%,28%))";
 }
 
-// ─── Unsplash Photo Fetcher ───────────────────────────────────────────────────
+// ─── Photo URL Builder (Picsum — reliable, no API key, unique per post) ──────
 function fetch_unsplash_photo(string $keywords): string {
-    // Always anchor to healthcare + tech so images stay professional
-    $base     = 'healthcare,technology,cybersecurity';
-    $clean    = preg_replace('/[^a-z0-9,\- ]/i', '', $keywords);
-    $query    = urlencode($base . ',' . $clean);
-    $source   = "https://source.unsplash.com/1200x630/?{$query}";
+    // Use slug-based seed so each post always gets the same unique photo.
+    // Picsum serves beautiful 1200x630 photos — deterministic per seed.
+    $seed = substr(preg_replace('/[^a-z0-9]/', '', strtolower($keywords)), 0, 40);
+    $url  = "https://picsum.photos/seed/{$seed}/1200/630";
 
-    // Follow the redirect to capture the actual stable CDN image URL
-    $ch = curl_init($source);
+    // Verify the URL resolves (quick HEAD check)
+    $ch = curl_init($url);
     curl_setopt_array($ch, [
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_FOLLOWLOCATION => true,
-        CURLOPT_NOBODY         => true,   // HEAD only — we only need the final URL
-        CURLOPT_TIMEOUT        => 10,
+        CURLOPT_NOBODY         => true,
+        CURLOPT_TIMEOUT        => 8,
         CURLOPT_USERAGENT      => 'HealthCyberInsights/1.0',
     ]);
     curl_exec($ch);
@@ -428,14 +427,14 @@ function fetch_unsplash_photo(string $keywords): string {
     $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
 
-    // Verify we got a real Unsplash image URL (not a redirect loop or error)
-    if ($http_code === 200 && str_contains($final_url, 'images.unsplash.com')) {
-        log_msg("Photo fetched: {$final_url}");
+    if ($http_code === 200 && $final_url) {
+        log_msg("Photo URL: {$final_url}");
         return $final_url;
     }
 
-    log_msg("Unsplash fetch failed (HTTP {$http_code}), using gradient fallback");
-    return ''; // Empty = CSS gradient fallback used in frontend
+    // Absolute fallback: return the picsum URL anyway (browser will load it directly)
+    log_msg("Picsum HEAD check failed — using URL directly: {$url}");
+    return $url;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
