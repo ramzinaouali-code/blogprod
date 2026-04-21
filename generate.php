@@ -361,6 +361,83 @@ $topic_pool = [
         'theme'    => 'privacy-direct',
     ],
 
+    // ── Direct AI Implementation topics ──────────────────────────────────────
+    [
+        'title'    => 'Generative AI in Clinical Documentation: How Ambient AI Scribes Are Transforming Physician Burnout',
+        'category' => 'ai-implementation',
+        'theme'    => 'ai-direct',
+    ],
+    [
+        'title'    => 'FDA Software as a Medical Device (SaMD) Pathway: Regulatory Roadmap for Clinical AI Products',
+        'category' => 'ai-implementation',
+        'theme'    => 'ai-direct',
+    ],
+    [
+        'title'    => 'AI-Powered Sepsis Prediction in the ICU: Implementation, Validation, and Clinical Workflow Integration',
+        'category' => 'ai-implementation',
+        'theme'    => 'ai-direct',
+    ],
+    [
+        'title'    => 'Bias and Fairness Auditing in Healthcare AI: Why Diverse Training Data Is a Patient Safety Issue',
+        'category' => 'ai-implementation',
+        'theme'    => 'ai-direct',
+    ],
+    [
+        'title'    => 'Explainable AI in Radiology: Building Clinician Trust in Black-Box Diagnostic Models',
+        'category' => 'ai-implementation',
+        'theme'    => 'ai-direct',
+    ],
+    [
+        'title'    => 'AI Model Drift in Clinical Environments: How to Monitor, Detect, and Retrain Safely',
+        'category' => 'ai-implementation',
+        'theme'    => 'ai-direct',
+    ],
+    [
+        'title'    => 'Large Language Models in the EHR: Use Cases, HIPAA Guardrails, and BAA Requirements',
+        'category' => 'ai-implementation',
+        'theme'    => 'ai-direct',
+    ],
+    [
+        'title'    => 'AI for Hospital Readmission Prediction: From Pilot to Production Without the Clinical Chaos',
+        'category' => 'ai-implementation',
+        'theme'    => 'ai-direct',
+    ],
+    [
+        'title'    => 'Procurement Checklist for AI Vendors in Healthcare: 12 Questions Every CISO Must Ask',
+        'category' => 'ai-implementation',
+        'theme'    => 'ai-direct',
+    ],
+    [
+        'title'    => 'Patient Consent for AI in Diagnosis and Treatment: Legal Obligations and Ethical Best Practices',
+        'category' => 'ai-implementation',
+        'theme'    => 'ai-direct',
+    ],
+    [
+        'title'    => 'AI-Assisted Medical Coding and Revenue Cycle: Accuracy, Audit Risk, and Compliance Controls',
+        'category' => 'ai-implementation',
+        'theme'    => 'ai-direct',
+    ],
+    [
+        'title'    => 'Conversational AI and Chatbots for Patient Engagement: Security, Privacy, and HIPAA Alignment',
+        'category' => 'ai-implementation',
+        'theme'    => 'ai-direct',
+    ],
+    [
+        'title'    => 'AI in Population Health Management: Stratifying Risk Without Perpetuating Health Disparities',
+        'category' => 'ai-implementation',
+        'theme'    => 'ai-direct',
+    ],
+    [
+        'title'    => 'Clinical Decision Support AI vs. Physician Autonomy: Governance Frameworks for Appropriate Override',
+        'category' => 'ai-implementation',
+        'theme'    => 'ai-direct',
+    ],
+    [
+        'title'    => 'AI Governance Committees in Health Systems: Structure, Membership, and Accountability Mechanisms',
+        'category' => 'ai-implementation',
+        'theme'    => 'ai-direct',
+    ],
+
     // ── Direct Ransomware topics ──────────────────────────────────────────────
     [
         'title'    => 'Ransomware Response Playbook for Hospitals: Detection, Containment, and Recovery in 72 Hours',
