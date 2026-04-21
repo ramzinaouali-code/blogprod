@@ -20,6 +20,27 @@ if (!$is_cli) {
     }
 }
 
+// ─── Optional category override (HTTP: ?category=ai-implementation) ───────────
+// Prepends the requested category to the front of the queue so the next post
+// is guaranteed to land in that section. Validated against known slugs.
+$valid_categories = ['ai-implementation','compliance','cyber-risk',
+                     'frameworks','hipaa','privacy','ransomware'];
+$forced_category  = null;
+if (!$is_cli) {
+    $req_cat = trim($_GET['category'] ?? '');
+    if ($req_cat && in_array($req_cat, $valid_categories, true)) {
+        $forced_category = $req_cat;
+    }
+} else {
+    // CLI: --category=ai-implementation
+    foreach ($argv ?? [] as $arg) {
+        if (str_starts_with($arg, '--category=')) {
+            $c = substr($arg, 11);
+            if (in_array($c, $valid_categories, true)) $forced_category = $c;
+        }
+    }
+}
+
 // ─── Schedule Guard ───────────────────────────────────────────────────────────
 $force = $is_cli && in_array('--force', $argv ?? []);
 if (!$force) {
@@ -649,7 +670,7 @@ if (!$is_cli) {
 // ─── Main (runs in background for HTTP, inline for CLI) ───────────────────────
 try {
     $db             = get_db();
-    $topic_data     = select_topic($topic_pool);
+    $topic_data     = select_topic($topic_pool, $forced_category ?? null);
     $topic          = $topic_data['title'];
     $category_slug  = $topic_data['category'];
     $selected_books = select_books($book_pool, $category_slug);
@@ -679,19 +700,26 @@ try {
  * Select the next topic using a shuffled category queue (ensures all 7 categories
  * appear in every cycle) and excludes the last 30 used topics.
  */
-function select_topic(array $pool): array {
+function select_topic(array $pool, ?string $force_category = null): array {
     $all_categories = ['ai-implementation', 'compliance', 'cyber-risk',
                        'frameworks', 'hipaa', 'privacy', 'ransomware'];
 
-    // Pop the next target category from the queue; refill when empty
-    $queue = json_decode(get_setting('category_queue', '[]'), true);
-    if (empty($queue)) {
-        $queue = $all_categories;
-        shuffle($queue);
-        log_msg('Category queue refilled: ' . implode(' → ', $queue));
+    // If a category was forced via ?category= or --category=, use it directly
+    // and do NOT consume from the queue (the override is one-shot)
+    if ($force_category) {
+        $target = $force_category;
+        log_msg("Category forced via parameter: {$target}");
+    } else {
+        // Pop the next target category from the queue; refill when empty
+        $queue = json_decode(get_setting('category_queue', '[]'), true);
+        if (empty($queue)) {
+            $queue = $all_categories;
+            shuffle($queue);
+            log_msg('Category queue refilled: ' . implode(' → ', $queue));
+        }
+        $target = array_shift($queue);
+        set_setting('category_queue', json_encode(array_values($queue)));
     }
-    $target = array_shift($queue);
-    set_setting('category_queue', json_encode(array_values($queue)));
 
     // Avoid repeating the last 30 topics
     $recent = json_decode(get_setting('recent_topics', '[]'), true);
