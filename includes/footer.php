@@ -5,7 +5,7 @@ $categories = get_categories();
   <div class="container">
     <div class="footer-grid">
       <div class="footer-brand">
-        <a href="<?= h(BLOG_URL) ?>/" class="site-logo">Health<span style="color:var(--accent)">Cyber</span> Insights</a>
+        <a href="<?= h(BLOG_URL) ?>/" class="site-logo"><span class="logo-health">Health</span><span class="logo-cyber">Cyber</span><span class="logo-insights">Insights</span></a>
         <p><?= h(BLOG_TAGLINE) ?>. Practical guidance for healthcare security and compliance professionals.</p>
       </div>
       <div>

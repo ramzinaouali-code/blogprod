@@ -63,14 +63,33 @@ img { max-width: 100%; display: block; }
   height: 60px;
 }
 .site-logo {
-  font-size: 18px;
-  font-weight: 700;
+  font-size: 22px;
+  font-weight: 800;
   color: #fff;
-  letter-spacing: -.3px;
+  letter-spacing: -.5px;
   white-space: nowrap;
+  display: flex;
+  align-items: baseline;
+  gap: 0;
+  line-height: 1;
+  text-shadow: 0 1px 4px rgba(0,0,0,.25);
 }
-.site-logo span { color: var(--accent); }
-.site-logo:hover { color: #fff; }
+.site-logo .logo-health  { color: #fff; }
+.site-logo .logo-cyber   {
+  color: var(--accent);
+  font-style: italic;
+  margin: 0 1px;
+}
+.site-logo .logo-insights {
+  color: rgba(255,255,255,.65);
+  font-weight: 500;
+  font-size: .72em;
+  letter-spacing: .5px;
+  text-transform: uppercase;
+  margin-left: 5px;
+  align-self: center;
+}
+.site-logo:hover { color: #fff; opacity: .9; }
 
 /* Hamburger */
 .nav-toggle {

@@ -25,7 +25,7 @@ $current_url = $_SERVER['REQUEST_URI'] ?? '/';
 <header class="site-header">
   <div class="container header-inner">
     <a href="<?= h(BLOG_URL) ?>/" class="site-logo">
-      Health<span>Cyber</span> Insights
+      <span class="logo-health">Health</span><span class="logo-cyber">Cyber</span><span class="logo-insights">Insights</span>
     </a>
     <button class="nav-toggle" id="navToggle" aria-label="Toggle navigation" aria-expanded="false">
       <span></span><span></span><span></span>
