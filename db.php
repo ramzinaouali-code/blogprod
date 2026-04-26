@@ -68,6 +68,18 @@ function init_schema(PDO $pdo): void {
     seed_categories($pdo);
     seed_settings($pdo);
     migrate_photo_url($pdo);
+    migrate_category_names($pdo);
+}
+
+function migrate_category_names(PDO $pdo): void {
+    // Keep display names in sync even when seed used INSERT OR IGNORE
+    $renames = [
+        'hipaa' => 'P/HIPAA',
+    ];
+    $stmt = $pdo->prepare('UPDATE categories SET name = ? WHERE slug = ? AND name != ?');
+    foreach ($renames as $slug => $name) {
+        $stmt->execute([$name, $slug, $name]);
+    }
 }
 
 function migrate_photo_url(PDO $pdo): void {
@@ -87,7 +99,7 @@ function seed_categories(PDO $pdo): void {
         ['ai-implementation', 'AI Implementation',   '#2e7d32'],
         ['frameworks',        'Frameworks',          '#0d47a1'],
         ['ransomware',        'Ransomware',          '#b71c1c'],
-        ['hipaa',             'HIPAA',               '#1a73e8'],
+        ['hipaa',             'P/HIPAA',             '#1a73e8'],
     ];
     $stmt = $pdo->prepare(
         'INSERT OR IGNORE INTO categories (slug, name, color) VALUES (?, ?, ?)'
