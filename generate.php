@@ -328,7 +328,7 @@ $topic_pool = [
         'theme'    => 'leadership',
     ],
 
-    // ── Direct HIPAA topics ───────────────────────────────────────────────────
+    // ── HIPAA topics ──────────────────────────────────────────────────────────
     [
         'title'    => 'HIPAA Security Rule Technical Safeguards: A 2025 Implementation Checklist for Health Systems',
         'category' => 'hipaa',
@@ -353,6 +353,100 @@ $topic_pool = [
         'title'    => 'HIPAA Administrative Safeguards: Workforce Training, Sanction Policies, and Access Management',
         'category' => 'hipaa',
         'theme'    => 'hipaa-direct',
+    ],
+    [
+        'title'    => 'HIPAA Risk Analysis vs. Risk Management: Understanding the Difference and Doing Both Right',
+        'category' => 'hipaa',
+        'theme'    => 'hipaa-direct',
+    ],
+    [
+        'title'    => 'HIPAA Physical Safeguards in the Age of Remote Work and Hybrid Clinical Environments',
+        'category' => 'hipaa',
+        'theme'    => 'hipaa-direct',
+    ],
+    [
+        'title'    => 'OCR HIPAA Enforcement Trends 2024-2025: Biggest Penalties and What They Teach Us',
+        'category' => 'hipaa',
+        'theme'    => 'hipaa-direct',
+    ],
+
+    // ── PHIPA topics (Ontario / Canadian healthcare privacy) ──────────────────
+    [
+        'title'    => 'PHIPA Explained: A Practical Guide to Ontario\'s Personal Health Information Protection Act for Healthcare IT Leaders',
+        'category' => 'hipaa',
+        'theme'    => 'phipa-direct',
+    ],
+    [
+        'title'    => 'PHIPA vs. HIPAA: Key Differences Every Cross-Border Healthcare Organization Must Understand',
+        'category' => 'hipaa',
+        'theme'    => 'phipa-direct',
+    ],
+    [
+        'title'    => 'PHIPA Breach Reporting to the IPC: Obligations, Timelines, and Lessons from Ontario Enforcement',
+        'category' => 'hipaa',
+        'theme'    => 'phipa-direct',
+    ],
+    [
+        'title'    => 'Consent Management Under PHIPA: Express vs. Implied Consent in Canadian Clinical Settings',
+        'category' => 'hipaa',
+        'theme'    => 'phipa-direct',
+    ],
+    [
+        'title'    => 'Privacy Impact Assessments Under PHIPA: When They Are Required and How to Do Them Right',
+        'category' => 'hipaa',
+        'theme'    => 'phipa-direct',
+    ],
+    [
+        'title'    => 'PHIPA and Cloud Computing: What Ontario Healthcare Organizations Must Require from Cloud Vendors',
+        'category' => 'hipaa',
+        'theme'    => 'phipa-direct',
+    ],
+    [
+        'title'    => 'PIPEDA to Bill C-27: How Canada\'s Evolving Federal Privacy Law Affects Healthcare Organizations',
+        'category' => 'hipaa',
+        'theme'    => 'phipa-direct',
+    ],
+    [
+        'title'    => 'Building a PHIPA-Compliant AI Governance Program: From Risk Assessment to Board Approval',
+        'category' => 'hipaa',
+        'theme'    => 'phipa-direct',
+    ],
+
+    // ── GDPR and health data topics ───────────────────────────────────────────
+    [
+        'title'    => 'GDPR Article 9 and Special Category Health Data: Obligations for Healthcare Organizations Processing EU Patient Data',
+        'category' => 'hipaa',
+        'theme'    => 'gdpr-direct',
+    ],
+    [
+        'title'    => 'GDPR vs. HIPAA vs. PHIPA: A Side-by-Side Compliance Framework for Global Healthcare IT Leaders',
+        'category' => 'hipaa',
+        'theme'    => 'gdpr-direct',
+    ],
+    [
+        'title'    => 'GDPR Data Subject Rights in Healthcare: Access, Rectification, and Erasure for Patient Records',
+        'category' => 'hipaa',
+        'theme'    => 'gdpr-direct',
+    ],
+    [
+        'title'    => 'GDPR Data Protection Officers in Healthcare: Role, Responsibilities, and When You Need One',
+        'category' => 'hipaa',
+        'theme'    => 'gdpr-direct',
+    ],
+    [
+        'title'    => 'GDPR Cross-Border Health Data Transfers: Standard Contractual Clauses and Adequacy Decisions Explained',
+        'category' => 'hipaa',
+        'theme'    => 'gdpr-direct',
+    ],
+    [
+        'title'    => 'GDPR Breach Notification for Healthcare: 72-Hour Reporting and the Lessons from Major EU Fines',
+        'category' => 'hipaa',
+        'theme'    => 'gdpr-direct',
+    ],
+    [
+        'title'    => 'Privacy by Design Under GDPR Article 25: Practical Implementation for Healthcare Application Teams',
+        'category' => 'hipaa',
+        'theme'    => 'gdpr-direct',
     ],
 
     // ── Direct Privacy topics ─────────────────────────────────────────────────
@@ -1045,6 +1139,9 @@ function insert_post(PDO $db, array $data, string $topic, string $category_slug 
 function resolve_category(PDO $db, string $tags): ?int {
     $map = [
         'hipaa'            => 'hipaa',
+        'phipa'            => 'hipaa',
+        'pipeda'           => 'hipaa',
+        'gdpr'             => 'hipaa',
         'hitech'           => 'hipaa',
         'phi'              => 'hipaa',
         'breach notification' => 'hipaa',
@@ -1062,7 +1159,7 @@ function resolve_category(PDO $db, string $tags): ?int {
         'phishing'         => 'cyber-risk',
         'zero trust'       => 'cyber-risk',
         'privacy'          => 'privacy',
-        'gdpr'             => 'privacy',
+        'data protection'  => 'privacy',
         'data protection'  => 'privacy',
         'compliance'       => 'compliance',
         'regulation'       => 'compliance',
