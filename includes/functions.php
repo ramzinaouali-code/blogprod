@@ -71,35 +71,36 @@ function csrf_field(): string {
 }
 
 // ─── Post Queries ─────────────────────────────────────────────────────────────
-function get_posts(int $limit = POSTS_PER_PAGE, int $offset = 0, ?int $category_id = null): array {
+function get_posts(int $limit = POSTS_PER_PAGE, int $offset = 0, ?int $category_id = null, string $lang = 'en'): array {
     $db = get_db();
     if ($category_id !== null) {
         $stmt = $db->prepare(
             'SELECT p.*, c.name AS category_name, c.color AS category_color, c.slug AS category_slug
              FROM posts p LEFT JOIN categories c ON p.category_id = c.id
-             WHERE p.status = "published" AND p.category_id = ?
+             WHERE p.status = "published" AND p.category_id = ? AND p.language = ?
              ORDER BY p.created_at DESC LIMIT ? OFFSET ?'
         );
-        $stmt->execute([$category_id, $limit, $offset]);
+        $stmt->execute([$category_id, $lang, $limit, $offset]);
     } else {
         $stmt = $db->prepare(
             'SELECT p.*, c.name AS category_name, c.color AS category_color, c.slug AS category_slug
              FROM posts p LEFT JOIN categories c ON p.category_id = c.id
-             WHERE p.status = "published"
+             WHERE p.status = "published" AND p.language = ?
              ORDER BY p.created_at DESC LIMIT ? OFFSET ?'
         );
-        $stmt->execute([$limit, $offset]);
+        $stmt->execute([$lang, $limit, $offset]);
     }
     return $stmt->fetchAll();
 }
 
-function count_posts(?int $category_id = null): int {
+function count_posts(?int $category_id = null, string $lang = 'en'): int {
     $db = get_db();
     if ($category_id !== null) {
-        $stmt = $db->prepare('SELECT COUNT(*) FROM posts WHERE status = "published" AND category_id = ?');
-        $stmt->execute([$category_id]);
+        $stmt = $db->prepare('SELECT COUNT(*) FROM posts WHERE status = "published" AND category_id = ? AND language = ?');
+        $stmt->execute([$category_id, $lang]);
     } else {
-        $stmt = $db->query('SELECT COUNT(*) FROM posts WHERE status = "published"');
+        $stmt = $db->prepare('SELECT COUNT(*) FROM posts WHERE status = "published" AND language = ?');
+        $stmt->execute([$lang]);
     }
     return (int)$stmt->fetchColumn();
 }
@@ -125,32 +126,42 @@ function get_post_books(int $post_id): array {
     return $stmt->fetchAll();
 }
 
-function get_adjacent_posts(int $post_id): array {
+function get_adjacent_posts(int $post_id, string $lang = 'en'): array {
     $db = get_db();
     $prev = $db->prepare(
-        'SELECT id, slug, title FROM posts WHERE status="published" AND id < ? ORDER BY id DESC LIMIT 1'
+        'SELECT id, slug, title FROM posts WHERE status="published" AND language=? AND id < ? ORDER BY id DESC LIMIT 1'
     );
-    $prev->execute([$post_id]);
+    $prev->execute([$lang, $post_id]);
     $next = $db->prepare(
-        'SELECT id, slug, title FROM posts WHERE status="published" AND id > ? ORDER BY id ASC LIMIT 1'
+        'SELECT id, slug, title FROM posts WHERE status="published" AND language=? AND id > ? ORDER BY id ASC LIMIT 1'
     );
-    $next->execute([$post_id]);
+    $next->execute([$lang, $post_id]);
     return ['prev' => $prev->fetch() ?: null, 'next' => $next->fetch() ?: null];
 }
 
-function get_categories(): array {
-    return get_db()->query(
+function get_categories(string $lang = 'en'): array {
+    $rows = get_db()->query(
         'SELECT c.*, COUNT(p.id) AS post_count
          FROM categories c LEFT JOIN posts p ON p.category_id = c.id AND p.status = "published"
          GROUP BY c.id ORDER BY c.name ASC'
     )->fetchAll();
+    // Use French category name when lang=fr
+    if ($lang === 'fr') {
+        foreach ($rows as &$row) {
+            if (!empty($row['name_fr'])) {
+                $row['name'] = $row['name_fr'];
+            }
+        }
+        unset($row);
+    }
+    return $rows;
 }
 
-function get_recent_posts(int $limit = 5): array {
+function get_recent_posts(int $limit = 5, string $lang = 'en'): array {
     $stmt = get_db()->prepare(
-        'SELECT id, slug, title, created_at FROM posts WHERE status = "published" ORDER BY created_at DESC LIMIT ?'
+        'SELECT id, slug, title, created_at FROM posts WHERE status = "published" AND language = ? ORDER BY created_at DESC LIMIT ?'
     );
-    $stmt->execute([$limit]);
+    $stmt->execute([$lang, $limit]);
     return $stmt->fetchAll();
 }
 

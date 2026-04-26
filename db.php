@@ -63,12 +63,51 @@ function init_schema(PDO $pdo): void {
             key   TEXT PRIMARY KEY,
             value TEXT NOT NULL
         );
+
+        CREATE TABLE IF NOT EXISTS subscribers (
+            id         INTEGER PRIMARY KEY AUTOINCREMENT,
+            email      TEXT    NOT NULL UNIQUE,
+            token      TEXT    NOT NULL UNIQUE,
+            status     TEXT    NOT NULL DEFAULT 'pending',
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
     ");
 
     seed_categories($pdo);
     seed_settings($pdo);
     migrate_photo_url($pdo);
+    migrate_language_column($pdo);
+    migrate_category_name_fr($pdo);
     migrate_category_names($pdo);
+}
+
+function migrate_language_column(PDO $pdo): void {
+    $cols = $pdo->query("PRAGMA table_info(posts)")->fetchAll(PDO::FETCH_ASSOC);
+    $has  = array_filter($cols, fn($c) => $c['name'] === 'language');
+    if (!$has) {
+        $pdo->exec("ALTER TABLE posts ADD COLUMN language TEXT NOT NULL DEFAULT 'en'");
+    }
+}
+
+function migrate_category_name_fr(PDO $pdo): void {
+    $cols = $pdo->query("PRAGMA table_info(categories)")->fetchAll(PDO::FETCH_ASSOC);
+    $has  = array_filter($cols, fn($c) => $c['name'] === 'name_fr');
+    if (!$has) {
+        $pdo->exec("ALTER TABLE categories ADD COLUMN name_fr TEXT NOT NULL DEFAULT ''");
+    }
+    $fr = [
+        'cyber-risk'        => 'Cyber-risque',
+        'privacy'           => 'Confidentialité',
+        'compliance'        => 'Conformité',
+        'ai-implementation' => 'Implémentation IA',
+        'frameworks'        => 'Cadres de référence',
+        'ransomware'        => 'Rançongiciels',
+        'hipaa'             => 'P/HIPAA',
+    ];
+    $stmt = $pdo->prepare("UPDATE categories SET name_fr = ? WHERE slug = ? AND (name_fr = '' OR name_fr IS NULL)");
+    foreach ($fr as $slug => $name_fr) {
+        $stmt->execute([$name_fr, $slug]);
+    }
 }
 
 function migrate_category_names(PDO $pdo): void {

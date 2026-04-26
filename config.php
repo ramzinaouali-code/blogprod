@@ -69,6 +69,13 @@ define('PEXELS_API_KEY', getenv('PEXELS_API_KEY') ?: '');
 // ─── Amazon Affiliate ─────────────────────────────────────────────────────────
 define('AMAZON_TAG', 'rncyberhealth-20');
 
+// ─── Brevo Email (Newsletter + Subscription confirmations) ───────────────────
+// On Railway: set BREVO_API_KEY, BREVO_FROM_EMAIL, BREVO_FROM_NAME
+// NEVER hardcode these values here — always use env vars
+define('BREVO_API_KEY',    getenv('BREVO_API_KEY')    ?: '');
+define('BREVO_FROM_EMAIL', getenv('BREVO_FROM_EMAIL') ?: '');
+define('BREVO_FROM_NAME',  getenv('BREVO_FROM_NAME')  ?: BLOG_NAME);
+
 // ─── Admin ────────────────────────────────────────────────────────────────────
 // On Railway: set ADMIN_PASSWORD_HASH environment variable
 // Generate hash: php -r "echo password_hash('yourpassword', PASSWORD_BCRYPT);"

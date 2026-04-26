@@ -8,6 +8,7 @@
  */
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/includes/email.php';
 
 $is_cli = (php_sapi_name() === 'cli');
 
@@ -772,12 +773,36 @@ try {
     log_msg("Generating post for topic: {$topic}");
     log_msg("Category: {$category_slug} | Books: " . implode(', ', array_column($selected_books, 'title')));
 
-    $response  = call_claude($topic, $selected_books);
-    $post_data = parse_post_response($response, $selected_books);
+    // ── English post ──────────────────────────────────────────────────────────
+    $en_response  = call_claude($topic, $selected_books, 'en');
+    $en_post_data = parse_post_response($en_response, $selected_books);
 
-    insert_post($db, $post_data, $topic, $category_slug);
-    log_generation('success', $topic, 'Post created: ' . $post_data['slug']);
-    log_msg("SUCCESS: Post '{$post_data['title']}' created (slug: {$post_data['slug']})");
+    // Fetch photo once — reuse for FR post (avoids double Pexels API call)
+    $photo_url = fetch_unsplash_photo($en_post_data['image_keywords']);
+
+    $en_post_id = insert_post($db, $en_post_data, $topic, $category_slug, 'en', $photo_url);
+    log_generation('success', $topic, 'EN post created: ' . $en_post_data['slug']);
+    log_msg("SUCCESS EN: Post '{$en_post_data['title']}' (slug: {$en_post_data['slug']})");
+
+    // ── French post (same topic, same books, reuse photo) ─────────────────────
+    try {
+        $fr_response  = call_claude($topic, $selected_books, 'fr');
+        $fr_post_data = parse_post_response($fr_response, $selected_books);
+
+        // Force FR slug = EN slug + '-fr' to guarantee uniqueness and traceability
+        $fr_post_data['slug'] = $en_post_data['slug'] . '-fr';
+
+        $fr_post_id = insert_post($db, $fr_post_data, $topic, $category_slug, 'fr', $photo_url);
+        log_generation('success', $topic, 'FR post created: ' . $fr_post_data['slug']);
+        log_msg("SUCCESS FR: Post '{$fr_post_data['title']}' (slug: {$fr_post_data['slug']})");
+    } catch (Throwable $fr_err) {
+        // FR failure should not roll back the EN post
+        log_msg("WARNING: FR generation failed: " . $fr_err->getMessage());
+        log_generation('error', $topic, 'FR generation failed: ' . $fr_err->getMessage());
+    }
+
+    // ── Newsletter — sent after EN post is live ────────────────────────────────
+    send_newsletter($en_post_id);
 
 } catch (Throwable $e) {
     $msg = 'ERROR: ' . $e->getMessage();
@@ -917,13 +942,18 @@ function should_run(): bool {
 }
 
 // ─── Claude API Call ──────────────────────────────────────────────────────────
-function call_claude(string $topic, array $books): string {
+function call_claude(string $topic, array $books, string $lang = 'en'): string {
+    $lang_note = $lang === 'fr'
+        ? "\n\nIMPORTANT: You must write the ENTIRE response in FRENCH (Canadian French preferred). This includes the title, excerpt, meta_description, tags, body content, and all book reason sentences. Keep technical proper nouns like HIPAA, NIST, PHIPA, HITRUST, FAIR, CIS, GDPR in their original form. Do NOT translate the XML tag names themselves."
+        : '';
+
     $system = 'You are a senior healthcare cybersecurity analyst and technical writer. '
             . 'Your audience is health system CISOs, compliance officers, and clinical informatics leaders. '
             . 'Write with authority, cite real frameworks (NIST CSF, HIPAA Security Rule, HITRUST, FAIR, CIS Controls), '
-            . 'and provide actionable, practitioner-level guidance. Tone: professional but accessible.';
+            . 'and provide actionable, practitioner-level guidance. Tone: professional but accessible.'
+            . $lang_note;
 
-    $prompt = build_prompt($topic, $books);
+    $prompt = build_prompt($topic, $books, $lang);
 
     $payload = json_encode([
         'model'      => CLAUDE_MODEL,
@@ -974,7 +1004,7 @@ function call_claude(string $topic, array $books): string {
 }
 
 // ─── Prompt Builder ───────────────────────────────────────────────────────────
-function build_prompt(string $topic, array $books): string {
+function build_prompt(string $topic, array $books, string $lang = 'en'): string {
     // Format the 3 pre-selected books for injection into the prompt
     $book_lines = '';
     foreach ($books as $i => $book) {
@@ -982,8 +1012,12 @@ function build_prompt(string $topic, array $books): string {
         $book_lines .= "  Book {$n}: \"{$book['title']}\" by {$book['author']}\n";
     }
 
+    $lang_instruction = $lang === 'fr'
+        ? "LANGUAGE REQUIREMENT: Write the entire blog post in FRENCH (Canadian French). Title, excerpt, meta_description, tags, body, and all book reason sentences must be in French. Keep HIPAA, NIST, PHIPA, HITRUST, FAIR, CIS, GDPR in their original form. The slug should be a French-language URL-friendly slug. Do NOT translate the XML tag names.\n\n"
+        : '';
+
     return <<<PROMPT
-Write a detailed, authoritative blog post for healthcare cybersecurity professionals on this topic:
+{$lang_instruction}Write a detailed, authoritative blog post for healthcare cybersecurity professionals on this topic:
 
 TOPIC: {$topic}
 
@@ -1070,7 +1104,20 @@ function parse_post_response(string $raw, array $selected_books): array {
 }
 
 // ─── DB Insert ────────────────────────────────────────────────────────────────
-function insert_post(PDO $db, array $data, string $topic, string $category_slug = ''): void {
+
+/**
+ * Insert a generated post into the database.
+ *
+ * @param PDO    $db            Database connection
+ * @param array  $data          Parsed post data (slug, title, excerpt, body, tags, books, image_keywords)
+ * @param string $topic         Original topic title (for logging)
+ * @param string $category_slug Category slug (e.g. 'hipaa', 'cyber-risk')
+ * @param string $lang          Post language: 'en' or 'fr'
+ * @param string $photo_url     Pre-fetched photo URL — skip Pexels fetch if provided
+ *
+ * @return int  The newly inserted post ID
+ */
+function insert_post(PDO $db, array $data, string $topic, string $category_slug = '', string $lang = 'en', string $photo_url = ''): int {
     // Resolve category: use explicit slug first, then fall back to tag-based detection
     $category_id = null;
     if ($category_slug) {
@@ -1092,20 +1139,17 @@ function insert_post(PDO $db, array $data, string $topic, string $category_slug 
 
     $thumbnail_css = post_thumbnail_css($data['slug'], $color);
 
-    // Fetch photo from Pexels (or Picsum fallback)
-    $photo_url = fetch_unsplash_photo($data['image_keywords']);
-
-    // Ensure unique slug
+    // Ensure unique slug (collision = append date suffix)
     $slug  = $data['slug'];
     $check = $db->prepare('SELECT id FROM posts WHERE slug = ?');
     $check->execute([$slug]);
     if ($check->fetch()) {
-        $slug = $slug . '-' . date('Ymd');
+        $slug = $slug . '-' . date('Ymd') . ($lang !== 'en' ? '-' . $lang : '');
     }
 
     $db->prepare(
-        'INSERT INTO posts (slug, title, excerpt, meta_description, body, tags, category_id, thumbnail_css, photo_url)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
+        'INSERT INTO posts (slug, title, excerpt, meta_description, body, tags, category_id, thumbnail_css, photo_url, language)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
     )->execute([
         $slug,
         $data['title'],
@@ -1116,6 +1160,7 @@ function insert_post(PDO $db, array $data, string $topic, string $category_slug 
         $category_id,
         $thumbnail_css,
         $photo_url,
+        $lang,
     ]);
 
     $post_id = (int)$db->lastInsertId();
@@ -1134,6 +1179,8 @@ function insert_post(PDO $db, array $data, string $topic, string $category_slug 
             $book['search_query'],
         ]);
     }
+
+    return $post_id;
 }
 
 function resolve_category(PDO $db, string $tags): ?int {
