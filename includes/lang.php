@@ -100,7 +100,7 @@ function _lang_map(): array {
             'unsub.back'            => 'Back to home',
             'unsub.invalid'         => 'Invalid or expired unsubscribe link.',
             // Footer
-            'footer.disclaimer'     => 'AI-generated content reviewed for accuracy. Not legal or compliance advice.',
+            'footer.disclaimer'     => 'All content authored by Ramzi Naouali based on 15 years of operational experience in healthcare cybersecurity and compliance. Provided for educational purposes only — consult a qualified professional for your specific situation.',
             'footer.rights'         => 'All rights reserved.',
             'footer.tagline'        => 'Practical guidance for healthcare security and compliance professionals.',
             'footer.topics_hd'      => 'Topics',
@@ -170,7 +170,7 @@ function _lang_map(): array {
             'unsub.back'            => "Retour à l'accueil",
             'unsub.invalid'         => 'Lien de désabonnement invalide ou expiré.',
             // Footer
-            'footer.disclaimer'     => "Contenu généré par IA, révisé pour exactitude. Pas un avis juridique ou de conformité.",
+            'footer.disclaimer'     => "Tout le contenu est rédigé par Ramzi Naouali, fort de 15 ans d'expérience opérationnelle en cybersécurité et conformité dans le secteur de la santé. Fourni à des fins éducatives uniquement — consultez un professionnel qualifié pour votre situation spécifique.",
             'footer.rights'         => 'Tous droits réservés.',
             'footer.tagline'        => 'Conseils pratiques pour les professionnels de la sécurité et de la conformité en santé.',
             'footer.topics_hd'      => 'Sujets',
