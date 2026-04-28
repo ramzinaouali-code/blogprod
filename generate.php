@@ -1166,10 +1166,11 @@ function insert_post(PDO $db, array $data, string $topic, string $category_slug 
     $post_id = (int)$db->lastInsertId();
 
     $book_stmt = $db->prepare(
-        'INSERT INTO affiliate_books (post_id, position, title, author, reason, search_query)
-         VALUES (?, ?, ?, ?, ?, ?)'
+        'INSERT INTO affiliate_books (post_id, position, title, author, reason, search_query, cover_url)
+         VALUES (?, ?, ?, ?, ?, ?, ?)'
     );
     foreach ($data['books'] as $book) {
+        $cover_url = fetch_book_cover($book['title'], $book['author']);
         $book_stmt->execute([
             $post_id,
             $book['position'],
@@ -1177,6 +1178,7 @@ function insert_post(PDO $db, array $data, string $topic, string $category_slug 
             $book['author'],
             $book['reason'],
             $book['search_query'],
+            $cover_url,
         ]);
     }
 
@@ -1233,6 +1235,43 @@ function post_thumbnail_css(string $slug, string $color = '#1a73e8'): string {
     $hue  = abs(crc32($slug)) % 360;
     $hue2 = ($hue + 40) % 360;
     return "linear-gradient(135deg, {$color}, hsl({$hue2},55%,28%))";
+}
+
+// ─── Book Cover Fetcher — Google Books API (no key required) ─────────────────
+
+/**
+ * Fetch a book cover image URL from Google Books API by title + author.
+ * Returns empty string if not found. Result is HTTPS and high-resolution.
+ */
+function fetch_book_cover(string $title, string $author): string {
+    $query = urlencode('"' . $title . '" ' . $author);
+    $url   = "https://www.googleapis.com/books/v1/volumes?q={$query}&maxResults=1&printType=books";
+
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT        => 8,
+        CURLOPT_USERAGENT      => 'HealthCyberInsights/1.0',
+    ]);
+    $body = curl_exec($ch);
+    $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    if ($code !== 200 || !$body) return '';
+
+    $data = json_decode($body, true);
+    $cover = $data['items'][0]['volumeInfo']['imageLinks']['thumbnail']
+          ?? $data['items'][0]['volumeInfo']['imageLinks']['smallThumbnail']
+          ?? '';
+
+    if (!$cover) return '';
+
+    // Force HTTPS and request a larger image (zoom=1 → zoom=0)
+    $cover = str_replace('http://', 'https://', $cover);
+    $cover = str_replace('zoom=1', 'zoom=0', $cover);
+    $cover = str_replace('&edge=curl', '', $cover); // remove curl effect
+
+    return $cover;
 }
 
 // ─── Photo Fetcher — Pexels with Picsum fallback ──────────────────────────────

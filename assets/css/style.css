@@ -751,3 +751,19 @@ img { max-width: 100%; display: block; }
   border-color: var(--accent);
   box-shadow: 0 0 0 3px rgba(26,115,232,.12);
 }
+
+/* ── Book Cover Images ───────────────────────────────────────────────────── */
+.book-cover {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  margin-bottom: 14px;
+}
+.book-cover img {
+  width: 110px;
+  height: 160px;
+  object-fit: cover;
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0,0,0,.2);
+  display: block;
+}

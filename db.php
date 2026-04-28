@@ -48,6 +48,7 @@ function init_schema(PDO $pdo): void {
             author       TEXT NOT NULL,
             reason       TEXT NOT NULL DEFAULT '',
             search_query TEXT NOT NULL,
+            cover_url    TEXT NOT NULL DEFAULT '',
             created_at   DATETIME DEFAULT CURRENT_TIMESTAMP
         );
 
@@ -79,6 +80,15 @@ function init_schema(PDO $pdo): void {
     migrate_language_column($pdo);
     migrate_category_name_fr($pdo);
     migrate_category_names($pdo);
+    migrate_book_cover_url($pdo);
+}
+
+function migrate_book_cover_url(PDO $pdo): void {
+    $cols = $pdo->query("PRAGMA table_info(affiliate_books)")->fetchAll(PDO::FETCH_ASSOC);
+    $has  = array_filter($cols, fn($c) => $c['name'] === 'cover_url');
+    if (!$has) {
+        $pdo->exec("ALTER TABLE affiliate_books ADD COLUMN cover_url TEXT NOT NULL DEFAULT ''");
+    }
 }
 
 function migrate_language_column(PDO $pdo): void {

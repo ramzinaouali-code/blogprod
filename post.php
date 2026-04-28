@@ -96,7 +96,13 @@ require_once __DIR__ . '/includes/header.php';
           <div class="books-grid">
             <?php foreach ($books as $book): ?>
               <div class="book-card">
-                <div class="book-icon">&#128218;</div>
+                <?php if (!empty($book['cover_url'])): ?>
+                  <div class="book-cover">
+                    <img src="<?= h($book['cover_url']) ?>" alt="<?= h($book['title']) ?>" loading="lazy">
+                  </div>
+                <?php else: ?>
+                  <div class="book-icon">&#128218;</div>
+                <?php endif; ?>
                 <div class="book-title"><?= h($book['title']) ?></div>
                 <div class="book-author"><?= t('post.books_by', $lang) ?> <?= h($book['author']) ?></div>
                 <div class="book-reason"><?= h($book['reason']) ?></div>
