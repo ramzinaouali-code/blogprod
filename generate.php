@@ -741,15 +741,28 @@ $book_pool = [
     ],
 ];
 
-// ─── HTTP: run synchronously, return real result ──────────────────────────────
-// Railway kills background processes after the HTTP response exits. Running
-// synchronously is the only reliable approach — Railway's request timeout is
-// several minutes, which is plenty for a single Claude API call (~30-50s).
+// ─── HTTP: ack immediately, spawn subprocess with --force ─────────────────────
+// The parent just validates the token + should_run(), then hands off to a
+// subprocess that runs with --force so it skips the duplicate guard check.
+// Single Claude call (FR paused) finishes in ~30-40s — well within Railway's
+// subprocess lifetime. This is the same pattern that worked before May 2.
 if (!$is_cli) {
-    set_time_limit(300);      // 5 minutes max
-    ignore_user_abort(true);  // keep running even if cron-job.org closes early
-    header('Content-Type: text/plain; charset=UTF-8');
-    // No Content-Length — we stream the result at the end
+    $ack = "202 Accepted — generating post in background.\n";
+    http_response_code(202);
+    header('Content-Type: text/plain');
+    header('Connection: close');
+    header('Content-Length: ' . strlen($ack));
+    echo $ack;
+    while (ob_get_level()) ob_end_flush();
+    flush();
+
+    // Pass --force so the subprocess skips the should_run() check
+    // (parent already verified it — avoids race condition / double-check)
+    $php    = PHP_BINARY;
+    $script = escapeshellarg(__FILE__);
+    $log    = escapeshellarg(LOG_PATH);
+    shell_exec("{$php} {$script} --local --force >> {$log} 2>&1 &");
+    exit;
 }
 
 // ─── Main generation ──────────────────────────────────────────────────────────
@@ -793,24 +806,13 @@ try {
     // ── Newsletter — sent after EN post is live ────────────────────────────────
     send_newsletter($en_post_id);
 
-    // ── HTTP: return real success response ────────────────────────────────────
-    if (!$is_cli) {
-        http_response_code(200);
-        echo "200 OK — Post created: \"{$en_post_data['title']}\" (slug: {$en_post_data['slug']})\n";
-    } else {
-        echo "SUCCESS: Post created: {$en_post_data['title']}\n";
-    }
+    echo "SUCCESS: Post created: {$en_post_data['title']}\n";
 
 } catch (Throwable $e) {
     $msg = 'ERROR: ' . $e->getMessage();
     log_generation('error', $topic ?? null, $msg);
     log_msg($msg);
-    if (!$is_cli) {
-        http_response_code(500);
-        echo $msg . "\n";
-    } else {
-        echo $msg . PHP_EOL;
-    }
+    echo $msg . PHP_EOL;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
