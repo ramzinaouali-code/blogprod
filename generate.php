@@ -741,28 +741,24 @@ $book_pool = [
     ],
 ];
 
-// ─── HTTP: ack immediately, spawn subprocess with --force ─────────────────────
-// The parent just validates the token + should_run(), then hands off to a
-// subprocess that runs with --force so it skips the duplicate guard check.
-// Single Claude call (FR paused) finishes in ~30-40s — well within Railway's
-// subprocess lifetime. This is the same pattern that worked before May 2.
+// ─── HTTP: flush 202 immediately, then run generation in the same process ─────
+// Railway runs PHP's built-in single-threaded dev server — child processes
+// spawned via shell_exec() are killed when the parent request exits.
+// Solution: ignore_user_abort(true) keeps this script alive after cron-job.org
+// receives the 202 and closes its connection. No subprocess needed.
 if (!$is_cli) {
+    set_time_limit(300);         // allow up to 5 min for the full generation
+    ignore_user_abort(true);     // keep running after cron-job.org disconnects
+
     $ack = "202 Accepted — generating post in background.\n";
     http_response_code(202);
     header('Content-Type: text/plain');
-    header('Connection: close');
     header('Content-Length: ' . strlen($ack));
+    header('Connection: close');
     echo $ack;
     while (ob_get_level()) ob_end_flush();
     flush();
-
-    // Pass --force so the subprocess skips the should_run() check
-    // (parent already verified it — avoids race condition / double-check)
-    $php    = PHP_BINARY;
-    $script = escapeshellarg(__FILE__);
-    $log    = escapeshellarg(LOG_PATH);
-    shell_exec("{$php} {$script} --local --force >> {$log} 2>&1 &");
-    exit;
+    // Script continues below — cron-job.org connection is now closed
 }
 
 // ─── Main generation ──────────────────────────────────────────────────────────
