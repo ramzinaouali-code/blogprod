@@ -142,7 +142,7 @@ $errors         = count(array_filter($logs, fn($l) => $l['status'] === 'error'))
               </span>
             </td>
             <td class="log-entry"><?= h(mb_strimwidth($log['topic'] ?? '', 0, 60, '...')) ?></td>
-            <td class="log-entry <?= $log['status'] === 'error' ? 'log-error' : '' ?>"><?= h(mb_strimwidth($log['message'] ?? '', 0, 90, '...')) ?></td>
+            <td class="log-entry <?= $log['status'] === 'error' ? 'log-error' : '' ?>" title="<?= h($log['message'] ?? '') ?>"><?= h(mb_strimwidth($log['message'] ?? '', 0, 300, '...')) ?></td>
             <td style="white-space:nowrap;color:var(--text-muted);font-size:12px"><?= h(date('M j H:i:s', strtotime($log['created_at']))) ?></td>
           </tr>
           <?php endforeach; ?>
