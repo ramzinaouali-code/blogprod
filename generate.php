@@ -741,8 +741,14 @@ $book_pool = [
     ],
 ];
 
-// ─── Respond immediately to cron-job.org, spawn generation as subprocess ─────
+// ─── Respond immediately to cron-job.org, then run generation in-process ──────
+// Shell subprocess (&) is unreliable on Railway — the spawned process gets killed
+// when the parent exits. Instead: flush the HTTP response, then keep running in the
+// same process using ignore_user_abort + fastcgi_finish_request (PHP-FPM compatible).
 if (!$is_cli) {
+    set_time_limit(300); // 5 minutes max for the full generation
+    ignore_user_abort(true);
+
     $ack = "202 Accepted — generating post in background.\n";
     http_response_code(202);
     header('Content-Type: text/plain');
@@ -750,21 +756,16 @@ if (!$is_cli) {
     header('Content-Length: ' . strlen($ack));
     echo $ack;
 
-    // Flush through all buffers + CDN proxy layers
+    // Flush the response to cron-job.org so their timer stops
     while (ob_get_level()) ob_end_flush();
     flush();
-
-    // Spawn a completely independent subprocess so Railway's CDN doesn't
-    // buffer the response waiting for this script to finish
-    $php    = PHP_BINARY;
-    $script = escapeshellarg(__FILE__);
-    $log    = escapeshellarg(LOG_PATH);
-    shell_exec("{$php} {$script} --local >> {$log} 2>&1 &");
-
-    exit; // This process ends — subprocess does the real work
+    if (function_exists('fastcgi_finish_request')) {
+        fastcgi_finish_request(); // PHP-FPM: closes HTTP connection, script keeps running
+    }
+    // Script continues below — HTTP connection is already closed
 }
 
-// ─── Main (runs in background for HTTP, inline for CLI) ───────────────────────
+// ─── Main generation (HTTP: runs after connection closed; CLI: inline) ────────
 try {
     $db             = get_db();
     $topic_data     = select_topic($topic_pool, $forced_category ?? null);
