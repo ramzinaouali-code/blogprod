@@ -780,7 +780,7 @@ try {
     $en_response  = call_claude($topic, $selected_books, 'en');
     $en_post_data = parse_post_response($en_response, $selected_books);
 
-    // Fetch photo once — reuse for FR post (avoids double Pexels API call)
+    // Fetch hero photo from Pexels (keywords extracted from post content)
     $photo_url = fetch_unsplash_photo($en_post_data['image_keywords']);
 
     $en_post_id = insert_post($db, $en_post_data, $topic, $category_slug, 'en', $photo_url);
