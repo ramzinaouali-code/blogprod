@@ -26,8 +26,12 @@ if (!$api_key) {
 }
 define('CLAUDE_API_KEY',    $api_key);
 define('CLAUDE_API_URL',    'https://api.anthropic.com/v1/messages');
-define('CLAUDE_MODEL',      'claude-opus-4-6');
-define('CLAUDE_MAX_TOKENS', 4096);
+// Model: readable via CLAUDE_MODEL env var in Railway dashboard (easy to change without deploy)
+// claude-haiku-4-5   — fastest (~10s), fits cron 30s limit, $1/MTok
+// claude-sonnet-4-6  — balanced speed+quality, $3/MTok
+// claude-opus-4-7    — highest quality, slower (~40s), $5/MTok
+define('CLAUDE_MODEL',      getenv('CLAUDE_MODEL') ?: 'claude-haiku-4-5');
+define('CLAUDE_MAX_TOKENS', 8096);
 
 // ─── Scheduling ───────────────────────────────────────────────────────────────
 define('TEST_MODE',          getenv('TEST_MODE') === 'false' ? false : true);
