@@ -43,7 +43,9 @@ if (!$is_cli) {
 }
 
 // ─── Schedule Guard ───────────────────────────────────────────────────────────
-$force = $is_cli && in_array('--force', $argv ?? []);
+// Force flag: CLI (--force) or HTTP (?force=1, admin-only via ADMIN_TOKEN header or matching token)
+$force = ($is_cli && in_array('--force', $argv ?? []))
+      || (!$is_cli && ($_GET['force'] ?? '') === '1' && hash_equals(CRON_TOKEN, ($_GET['token'] ?? '')));
 if (!$force) {
     if (!should_run()) {
         $msg = 'Too soon — skipping generation.';
