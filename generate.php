@@ -741,31 +741,18 @@ $book_pool = [
     ],
 ];
 
-// ─── Respond immediately to cron-job.org, then run generation in-process ──────
-// Shell subprocess (&) is unreliable on Railway — the spawned process gets killed
-// when the parent exits. Instead: flush the HTTP response, then keep running in the
-// same process using ignore_user_abort + fastcgi_finish_request (PHP-FPM compatible).
+// ─── HTTP: run synchronously, return real result ──────────────────────────────
+// Railway kills background processes after the HTTP response exits. Running
+// synchronously is the only reliable approach — Railway's request timeout is
+// several minutes, which is plenty for a single Claude API call (~30-50s).
 if (!$is_cli) {
-    set_time_limit(300); // 5 minutes max for the full generation
-    ignore_user_abort(true);
-
-    $ack = "202 Accepted — generating post in background.\n";
-    http_response_code(202);
-    header('Content-Type: text/plain');
-    header('Connection: close');
-    header('Content-Length: ' . strlen($ack));
-    echo $ack;
-
-    // Flush the response to cron-job.org so their timer stops
-    while (ob_get_level()) ob_end_flush();
-    flush();
-    if (function_exists('fastcgi_finish_request')) {
-        fastcgi_finish_request(); // PHP-FPM: closes HTTP connection, script keeps running
-    }
-    // Script continues below — HTTP connection is already closed
+    set_time_limit(300);      // 5 minutes max
+    ignore_user_abort(true);  // keep running even if cron-job.org closes early
+    header('Content-Type: text/plain; charset=UTF-8');
+    // No Content-Length — we stream the result at the end
 }
 
-// ─── Main generation (HTTP: runs after connection closed; CLI: inline) ────────
+// ─── Main generation ──────────────────────────────────────────────────────────
 try {
     $db             = get_db();
     $topic_data     = select_topic($topic_pool, $forced_category ?? null);
@@ -806,11 +793,24 @@ try {
     // ── Newsletter — sent after EN post is live ────────────────────────────────
     send_newsletter($en_post_id);
 
+    // ── HTTP: return real success response ────────────────────────────────────
+    if (!$is_cli) {
+        http_response_code(200);
+        echo "200 OK — Post created: \"{$en_post_data['title']}\" (slug: {$en_post_data['slug']})\n";
+    } else {
+        echo "SUCCESS: Post created: {$en_post_data['title']}\n";
+    }
+
 } catch (Throwable $e) {
     $msg = 'ERROR: ' . $e->getMessage();
     log_generation('error', $topic ?? null, $msg);
     log_msg($msg);
-    if ($is_cli) echo $msg . PHP_EOL;
+    if (!$is_cli) {
+        http_response_code(500);
+        echo $msg . "\n";
+    } else {
+        echo $msg . PHP_EOL;
+    }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
