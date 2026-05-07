@@ -784,22 +784,21 @@ try {
     log_generation('success', $topic, 'EN post created: ' . $en_post_data['slug']);
     log_msg("SUCCESS EN: Post '{$en_post_data['title']}' (slug: {$en_post_data['slug']})");
 
-    // ── French post (same topic, same books, reuse photo) ─────────────────────
+    // ── French post — currently paused ───────────────────────────────────────
+    // Uncomment the block below to re-enable bilingual generation.
+    /*
     try {
         $fr_response  = call_claude($topic, $selected_books, 'fr');
         $fr_post_data = parse_post_response($fr_response, $selected_books);
-
-        // Force FR slug = EN slug + '-fr' to guarantee uniqueness and traceability
         $fr_post_data['slug'] = $en_post_data['slug'] . '-fr';
-
         $fr_post_id = insert_post($db, $fr_post_data, $topic, $category_slug, 'fr', $photo_url);
         log_generation('success', $topic, 'FR post created: ' . $fr_post_data['slug']);
         log_msg("SUCCESS FR: Post '{$fr_post_data['title']}' (slug: {$fr_post_data['slug']})");
     } catch (Throwable $fr_err) {
-        // FR failure should not roll back the EN post
         log_msg("WARNING: FR generation failed: " . $fr_err->getMessage());
         log_generation('error', $topic, 'FR generation failed: ' . $fr_err->getMessage());
     }
+    */
 
     // ── Newsletter — sent after EN post is live ────────────────────────────────
     send_newsletter($en_post_id);
